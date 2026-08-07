@@ -5,16 +5,17 @@ import numpy as np
 import joblib
 import os
 
-@app.get("/")
-def root():
-    return {
-        "message": "Dynamic Pricing API is running successfully!"
-    }
+
 
 app = FastAPI(
     title="Dynamic Pricing Engine",
     version="1.0"
 )
+@app.get("/")
+def root():
+    return {
+        "message": "Dynamic Pricing API is running successfully!"
+    }
 
 BASE_DIR = os.path.dirname(__file__)
 
