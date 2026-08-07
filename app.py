@@ -85,7 +85,7 @@ if st.button("Predict Demand"):
     }
 
     response = requests.post(
-        "http://127.0.0.1:8000/predict-demand",
+        "https://dynamic-pricing-engine-5.onrender.com/predict-demand",
         json=payload
     )
 
@@ -117,7 +117,7 @@ if st.button("Recommend Price"):
     }
 
     response = requests.post(
-        "http://127.0.0.1:8000/recommend-price",
+        "https://dynamic-pricing-engine-5.onrender.com/recommend-price",
         json=payload
     )
 
