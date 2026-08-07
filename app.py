@@ -159,64 +159,64 @@ if st.button("Recommend Price"):
             result["Simulation"]
         )
 #Price vs Demand
-fig = px.line(
-
-    df,
-
-    x="Price",
-
-    y="Demand",
-
-    markers=True,
-
-    title="Price vs Demand"
-
-)
-
-st.plotly_chart(
-    fig,
-    use_container_width=True
-)     
-#Price vs Revenue
-fig = px.line(
-
-    df,
-
-    x="Price",
-
-    y="Revenue",
-
-    markers=True,
-
-    title="Price vs Revenue"
-
-)
-
-st.plotly_chart(
-    fig,
-    use_container_width=True
-)
-#Price vs Profit
-fig = px.line(
-
-    df,
-
-    x="Price",
-
-    y="Profit",
-
-    markers=True,
-
-    title="Price vs Profit"
-
-)
-
-st.plotly_chart(
-    fig,
-    use_container_width=True
-)
-#Simulation Table
-st.subheader("Simulation Results")
+        fig = px.line(
+        
+            df,
+        
+            x="Price",
+        
+            y="Demand",
+        
+            markers=True,
+        
+            title="Price vs Demand"
+        
+        )
+        
+        st.plotly_chart(
+            fig,
+            use_container_width=True
+        )     
+        #Price vs Revenue
+        fig = px.line(
+        
+            df,
+        
+            x="Price",
+        
+            y="Revenue",
+        
+            markers=True,
+        
+            title="Price vs Revenue"
+        
+        )
+        
+        st.plotly_chart(
+            fig,
+            use_container_width=True
+        )
+        #Price vs Profit
+        fig = px.line(
+        
+            df,
+        
+            x="Price",
+        
+            y="Profit",
+        
+            markers=True,
+        
+            title="Price vs Profit"
+        
+        )
+        
+        st.plotly_chart(
+            fig,
+            use_container_width=True
+        )
+        #Simulation Table
+        st.subheader("Simulation Results")
 
 st.dataframe(
     df,
