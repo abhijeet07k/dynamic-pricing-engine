@@ -2,46 +2,134 @@ import streamlit as st
 import requests
 import pandas as pd
 import plotly.express as px
-#Page Configuration
+
+# ============================================
+# Configuration
+# ============================================
+
+API_URL = "https://dynamic-pricing-engine-5.onrender.com"
+
 st.set_page_config(
     page_title="Dynamic Pricing Engine",
     page_icon="💰",
     layout="wide"
 )
 
-st.title("💰 Dynamic Pricing Engine")
-st.write("AI-powered Dynamic Pricing Recommendation System")
-#Sidebar Inputs
-st.sidebar.header("Input Product Details")
+# ============================================
+# Load Dataset
+# ============================================
 
-stock_code = st.sidebar.text_input(
-    "Product Code",
-    "85123A"
+@st.cache_data
+def load_data():
+    df = pd.read_csv(
+        "online_retail_II.csv",
+        encoding="cp1252"
+    )
+
+    df["StockCode"] = df["StockCode"].astype(str)
+
+    countries = sorted(
+        df["Country"].dropna().unique().tolist()
+    )
+
+    products = (
+        df[["StockCode", "Description"]]
+        .drop_duplicates()
+        .dropna()
+        .sort_values("Description")
+    )
+
+    return countries, products
+
+countries, products = load_data()
+
+# ============================================
+# API Helper
+# ============================================
+
+def call_api(endpoint, payload):
+
+    try:
+
+        response = requests.post(
+            f"{API_URL}/{endpoint}",
+            json=payload,
+            timeout=30
+        )
+
+        response.raise_for_status()
+
+        return response.json(), None
+
+    except requests.exceptions.Timeout:
+        return None, "Request Timeout"
+
+    except requests.exceptions.ConnectionError:
+        return None, "Cannot connect to FastAPI server."
+
+    except requests.exceptions.HTTPError:
+        return None, response.text
+
+    except Exception as e:
+        return None, str(e)
+
+# ============================================
+# Header
+# ============================================
+
+st.title("💰 Dynamic Pricing Engine")
+
+st.markdown(
+"""
+AI-powered Dynamic Pricing Recommendation System
+"""
 )
 
-country = st.sidebar.text_input(
+# ============================================
+# Sidebar
+# ============================================
+
+st.sidebar.header("Product Information")
+
+product_display = [
+    f"{row.StockCode} - {row.Description}"
+    for _, row in products.iterrows()
+]
+
+selected_product = st.sidebar.selectbox(
+    "Select Product",
+    product_display
+)
+
+stock_code = selected_product.split(" - ")[0]
+
+country = st.sidebar.selectbox(
     "Country",
-    "United Kingdom"
+    countries
 )
 
 current_price = st.sidebar.number_input(
     "Current Price",
-    value=100.0
+    value=100.0,
+    min_value=0.0
 )
 
 cost_price = st.sidebar.number_input(
     "Cost Price",
-    value=70.0
+    value=70.0,
+    min_value=0.0
 )
 
 competitor_price = st.sidebar.number_input(
     "Competitor Price",
-    value=95.0
+    value=95.0,
+    min_value=0.0
 )
 
 inventory = st.sidebar.number_input(
     "Inventory",
-    value=150
+    value=150,
+    min_value=0
 )
 
 month = st.sidebar.slider(
@@ -67,8 +155,17 @@ weekend = st.sidebar.selectbox(
     "Weekend",
     [0,1]
 )
-#Predict Demand Button
-if st.button("Predict Demand"):
+
+# ============================================
+# Predict Demand
+# ============================================
+
+st.subheader("Demand Prediction")
+
+if st.button(
+    "Predict Demand",
+    use_container_width=True
+):
 
     payload = {
 
@@ -84,22 +181,33 @@ if st.button("Predict Demand"):
 
     }
 
-    response = requests.post(
-        "https://dynamic-pricing-engine-5.onrender.com/predict-demand",
-        json=payload
-    )
+    with st.spinner("Predicting Demand..."):
 
-    if response.status_code == 200:
+        result, error = call_api(
+            "predict-demand",
+            payload
+        )
 
-        demand = response.json()["PredictedDemand"]
+    if error:
 
-        st.success(f"Predicted Demand: {demand:.2f}")
+        st.error(error)
 
     else:
 
-        st.error(response.text)
-#Recommend Price Button
-if st.button("Recommend Price"):
+        st.success(
+            f"Predicted Demand : {result['PredictedDemand']:.2f}"
+        )
+
+# ============================================
+# Recommend Price
+# ============================================
+
+st.subheader("Price Recommendation")
+
+if st.button(
+    "Recommend Price",
+    use_container_width=True
+):
 
     payload = {
 
@@ -116,109 +224,114 @@ if st.button("Recommend Price"):
 
     }
 
-    response = requests.post(
-        "https://dynamic-pricing-engine-5.onrender.com/recommend-price",
-        json=payload
-    )
+    with st.spinner("Optimizing Price..."):
 
-    if response.status_code == 200:
+        result, error = call_api(
+            "recommend-price",
+            payload
+        )
 
-        result = response.json()
+    if error:
+
+        st.error(error)
+
+    else:
 
         st.success("Recommendation Generated")
 
-        c1,c2,c3,c4 = st.columns(4)
+        col1,col2,col3,col4 = st.columns(4)
 
-        c1.metric(
+        revenue = (
+            result["RecommendedPrice"]
+            * result["ExpectedDemand"]
+        )
+
+        col1.metric(
             "Recommended Price",
             f"₹{result['RecommendedPrice']:.2f}"
         )
 
-        c2.metric(
-            "Predicted Demand",
-            result["ExpectedDemand"]
+        col2.metric(
+            "Expected Demand",
+            f"{result['ExpectedDemand']:.2f}"
         )
 
-        revenue = (
-            result["RecommendedPrice"]
-            *
-            result["ExpectedDemand"]
-        )
-
-        c3.metric(
+        col3.metric(
             "Expected Revenue",
             f"₹{revenue:.2f}"
         )
 
-        c4.metric(
+        col4.metric(
             "Expected Profit",
             f"₹{result['ExpectedProfit']:.2f}"
         )
 
-        df = pd.DataFrame(
-            result["Simulation"]
-        )
-#Price vs Demand
-        fig = px.line(
-        
-            df,
-        
-            x="Price",
-        
-            y="Demand",
-        
-            markers=True,
-        
-            title="Price vs Demand"
-        
-        )
-        
-        st.plotly_chart(
-            fig,
-            use_container_width=True
-        )     
-        #Price vs Revenue
-        fig = px.line(
-        
-            df,
-        
-            x="Price",
-        
-            y="Revenue",
-        
-            markers=True,
-        
-            title="Price vs Revenue"
-        
-        )
-        
-        st.plotly_chart(
-            fig,
-            use_container_width=True
-        )
-        #Price vs Profit
-        fig = px.line(
-        
-            df,
-        
-            x="Price",
-        
-            y="Profit",
-        
-            markers=True,
-        
-            title="Price vs Profit"
-        
-        )
-        
-        st.plotly_chart(
-            fig,
-            use_container_width=True
-        )
-        #Simulation Table
-        st.subheader("Simulation Results")
+        simulation = result.get("Simulation")
 
-st.dataframe(
-    df,
-    use_container_width=True
-)
+        if simulation:
+
+            df = pd.DataFrame(simulation)
+
+            st.divider()
+
+            st.subheader("Simulation Analysis")
+
+            fig = px.line(
+                df,
+                x="Price",
+                y="Demand",
+                markers=True,
+                title="Price vs Demand"
+            )
+
+            st.plotly_chart(
+                fig,
+                use_container_width=True
+            )
+
+            fig = px.line(
+                df,
+                x="Price",
+                y="Revenue",
+                markers=True,
+                title="Price vs Revenue"
+            )
+
+            st.plotly_chart(
+                fig,
+                use_container_width=True
+            )
+
+            fig = px.line(
+                df,
+                x="Price",
+                y="Profit",
+                markers=True,
+                title="Price vs Profit"
+            )
+
+            st.plotly_chart(
+                fig,
+                use_container_width=True
+            )
+
+            st.subheader("Simulation Table")
+
+            st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True
+            )
+
+        else:
+
+            st.warning(
+                "Simulation data not returned by API."
+            )
+
+# ============================================
+# Footer
+# ============================================
+
+st.divider()
+
